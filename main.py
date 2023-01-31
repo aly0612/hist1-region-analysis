@@ -167,30 +167,45 @@ def hist1_compaction():
     section_7 = round(sections * 7)
     section_8 = round(sections * 8)
     section_9 = round(sections * 9)
+    temp_num = 0
+
     for index, value in zip(hist1_sum_rows.index, hist1_sum_rows.values): #Use only values from hist1 region, and compare to whole genome
         if value <= section_1 :
             print (index, "10")
+            temp_num += 10
         elif (value <= section_2 and value > section_1):
             print (index, "9")
+            temp_num += 9
         elif (value <= section_3 and value > section_2):
             print (index, "8")
+            temp_num += 8
         elif(value <= section_4 and value > section_3):
             print (index, "7")
+            temp_num += 7
         elif (value <= section_5 and value > section_4):
             print(index, "6")
+            temp_num += 6
         elif (value <= section_6 and value > section_5):
             print(index, "5")
+            temp_num += 5
         elif(value <= section_7 and value > section_6):
             print(index, "4")
+            temp_num += 4
         elif(value <= section_8 and value > section_7):
             print(index, "3")
+            temp_num += 3
         elif(value < section_9 and value > section_8):
             print(index, "2")
+            temp_num += 2
         else:
             print(index, "1")
+            temp_num += 1
+    
+    average_compaction = temp_num / hist1_num_windows()
 
+    print("Average compaction: ", average_compaction)
 
-
+    print(hist1_sum_rows)
 
 
 print(data)
