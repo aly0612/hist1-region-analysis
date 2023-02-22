@@ -153,7 +153,7 @@ def kmedoids_clustering(normalize_data, k=3, num_repeats=15):
     quality_metrics = []  # list to store the quality metric for each repetition
     best_medoids = None
     min_variance = float('inf')
-    
+    best_clusters = None
     for i in range(num_repeats):
         # perform k-medoids clustering with random initial clusters
         clusters, cluster_df = select_initial_clusters(normalize_data)
@@ -165,7 +165,7 @@ def kmedoids_clustering(normalize_data, k=3, num_repeats=15):
             else:
                 medoids = new_medoids
                 clusters = assign_to_cluster(medoids, normalize_data)
-        
+            
         # calculate the quality metric for this repetition
         variance = calculate_variance(medoids, normalize_data)
         quality_metrics.append(variance)
@@ -174,31 +174,51 @@ def kmedoids_clustering(normalize_data, k=3, num_repeats=15):
         if variance < min_variance and len(medoids) == k:
             min_variance = variance
             best_medoids = medoids
-    
-    return best_medoids, min_variance, quality_metrics
+            best_clusters = assign_to_cluster(best_medoids, normalize_data)
+
+    return best_medoids, min_variance, quality_metrics, best_clusters
 
 
   
-best_medoids, min_variance, quality_metrics = kmedoids_clustering(normalize_data)
-print('Best medoids:', best_medoids)
-print('Minimum variance:', min_variance)
+best_medoids, min_variance, quality_metrics, best_clusters = kmedoids_clustering(normalize_data)
 
-medoid1 = best_medoids[0]
-medoid2 = best_medoids[1]
-medoid3 = best_medoids[2]
-medoid1_df = original_original_data.loc[:,medoid1]
-medoid2_df = original_original_data.loc[:,medoid2]
-medoid3_df = original_original_data.loc[:,medoid3]
-medoid1_df = medoid1_df.to_frame()
-medoid2_df = medoid2_df.to_frame()
-medoid3_df = medoid3_df.to_frame()
+print("Best Medoids", best_medoids)
+print("Min Variance", min_variance)
+print("Best Clusters", best_clusters)
+print(original_original_data)
+
+
+
+c1 = []
+c2 = []
+c3 = []
+
+for key in best_clusters:
+    if key == best_medoids[0]:
+        c1 = best_clusters[key]
+    if key == best_medoids[1]:
+        c2 = best_clusters[key]
+    if key == best_medoids[2]:
+        c3 = best_clusters[key]
+
+cluster1_data = original_original_data.loc[:, c1].T
+cluster2_data = original_original_data.loc[:, c2].T
+cluster3_data = original_original_data.loc[:, c3].T
+# create grid of plots
 fig, axs = plt.subplots(1, 3, figsize=(12, 4))
-sns.heatmap(medoid1_df, cmap='Blues', ax=axs[0])
-sns.heatmap(medoid2_df, cmap='Blues', ax=axs[1])
-sns.heatmap(medoid3_df, cmap='Blues', ax=axs[2])
+
+# create heatmap for each cluster and add to grid of plots
+sns.heatmap(cluster1_data,   ax=axs[0])
+sns.heatmap(cluster2_data,  ax=axs[1])
+sns.heatmap(cluster3_data,   ax=axs[2])
+
+# set titles for each heatmap
+axs[0].set_title('Cluster 1')
+axs[1].set_title('Cluster 2')
+axs[2].set_title('Cluster 3')
+
+# adjust spacing between plots
+plt.subplots_adjust(wspace=0.3)
+
+# display the plot
 plt.show()
-
-
-
-
-
