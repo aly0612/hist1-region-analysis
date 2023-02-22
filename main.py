@@ -7,6 +7,7 @@ import pprint
 import csv
 
 
+
 data = pd.read_csv(
     'GSE64881_segmentation_at_30000bp.passqc.multibam.txt', delimiter="\t")
 # Read only the nps and columns, eliminates unwanted data
@@ -338,17 +339,17 @@ def normalize_jaccard_index(np1: np.ndarray, np2: np.ndarray):
 
 
 def store_normalize_jaccard_matrix(nps_arrays: dict):
-    normalize_jaccard_matrix = pd.DataFrame(
+    normalize_jaccard_matrix = pd.DataFrame(  # initializing Dataframe to make matrix
         index=nps_arrays.keys(), columns=nps_arrays.keys())
+    # Goes through each element and stores the normalized jaccard index
     for x in normalize_jaccard_matrix.columns:
         for y in normalize_jaccard_matrix.index:
             normalize_jaccard_matrix.at[x, y] = normalize_jaccard_index(
                 nps_arrays[x], nps_arrays[y])
-
     normalize_jaccard_matrix = pd.read_csv('normalize_jaccard_matrix.csv')
     print(normalize_jaccard_matrix)
-    #sns.heatmap(normalize_jaccard_matrix)
-    #plt.show()
+   # sns.heatmap(normalize_jaccard_matrix)
+   # plt.show()
     return normalize_jaccard_matrix
 
 
@@ -358,42 +359,43 @@ nps_arrays = store_value()
 
 
 def select_initial_clusters(normalize_df: pd.DataFrame):
-    #select 3 random samples in the dataframe, if the same samples replace
+    # select 3 random samples in the dataframe, if the same samples replace
     normalize_df = normalize_df.sample(n=3, replace=True)
     c1 = []
     c2 = []
     c3 = []
-    #iterate over columns in dataframe
+    # iterate over columns in dataframe
     for x in normalize_df.columns:
+        # retrieves the column with the name x
         column = normalize_df[x]
-        #get the minimum value in the column
-        min_value = column.min()
+        # get the maximum value in the column x
+        max_value = column.max()
         # If there are duplicates in the column, store the duplicates in a series
-        duplicates = column[column == min_value]
+        duplicates = column[column == max_value]
         if len(duplicates) > 1:  # If there are duplicates
-            #select a random index from the duplciates
-            min_index = np.random.choice(duplicates.index)
-            # assign the min index to a random
+            # select a random index from the duplciates
+            max_index = np.random.choice(duplicates.index)
+            # assign the max index to a random
         else:
-            #get the index of the minimum value
-            min_index = column.idxmin()
-        #assign the column to the cluster with the corresponding index
-        if min_index == normalize_df.index[0]:
+            # get the index of the max value
+            max_index = column.idxmax()
+        # assign the column to the cluster with the corresponding index label
+        if max_index == normalize_df.index[0]:
             c1.append(x)
 
-        if min_index == normalize_df.index[1]:
+        if max_index == normalize_df.index[1]:
             c2.append(x)
 
-        if min_index == normalize_df.index[2]:
+        if max_index == normalize_df.index[2]:
             c3.append(x)
-    #create the dictionary mapping each np to a specific cluster
+    # create the dictionary mapping each np to a specific cluster
     np_relation = {
         normalize_df.index[0]: c1, normalize_df.index[1]: c2, normalize_df.index[2]: c3}
     # pprint.pprint(np_relation)
     return np_relation
 
 
-def find_medoid(np_relation: dict[list], normalize_df: pd.DataFrame):
+def find_initial_medoids(np_relation: dict[list], normalize_df: pd.DataFrame):
     medoids = []  # initialize list for the medoids
     for cluster in np_relation.keys():  # loop through each cluster(initial 3  random nps)/ use .keys() as the keys to the index are the clusters
         # get nps for the specific cluster, initializes a list
@@ -408,75 +410,118 @@ def find_medoid(np_relation: dict[list], normalize_df: pd.DataFrame):
                 temp_distances.append(normalize_df.loc[np1, np2])
             # sum the distances and store into list as np1 has been compared. now move to np2
             distances.append(sum(temp_distances))
-        
-        if not distances: #make sure the distances is not empty
+
+        if not distances:  # make sure the distances is not empty
             continue
-        
+
         # assign the first medoid by finding the min in the distances sum list
-        medoid = nps[distances.index(min(distances))]
+        # finds the data point that has the smallest average distance to all other data points in the cluster.
+        # return index(NP) that contained the minimum sum of distances
+        medoid = nps[distances.index(max(distances))]
         medoids.append(medoid)  # add to medoid list/ Move to next cluster.
-   # print(medoids)
+
     return medoids
 
 
 def calculate_variance(medoids: list, np_relation: dict[list], normalize_df: pd.DataFrame):
-    #initialize a list for the variances
+        # initialize a list for the variances
     variances = []
-    #initialize a 2d list of the clusters
+    # initialize a 2d list of the clusters
     cluster_lists = []
     # Get the lists of NPs in each cluster
     for value in np_relation.values():
         cluster_lists.append(value)
 
     # Find the variance for each cluster
-    for medoid, cluster in zip(medoids, cluster_lists): #zip compbines to list to one, makes it easier to work with two list in a loop
-        #initialize a variable to store the sum of distances for each cluster
-        sum_of_distances = 0
-        for np in cluster:
-            #get the similarity between np and the medoid
-            similarity = normalize_df.loc[medoid, np]
-            #get the jaccard distance
+    # zip combines two lists to one, makes it easier to work with two lists in a loop
+    for medoid, cluster in zip(medoids, cluster_lists):
+        # initialize a list to store the distances for each NP in the cluster
+        distances = []
+        for nps in cluster:
+            # get the similarity between np and the medoid
+            similarity = normalize_df.loc[medoid, nps]
+            # get the jaccard distance
             distance = 1 - similarity
-            #add to sum
-            sum_of_distances += distance
-        #get the average
-        variance = sum_of_distances / len(cluster)
-        #push the new average to the variance list
+            # add to distances list
+            distances.append(distance)
+        # calculate the variance using np.var()
+        variance = np.var(distances)
+        # push the new variance to the variances list
         variances.append(variance)
     return variances
 
-def find_best_variance(normalize_df: pd.DataFrame):
-    #initialize  a list to store the best variances
-    best_variances = []
-    #initialize a variable for the best variance to infinity
-    best_variance = float("inf")
-    #initialize list for the best medoids
-    best_medoids = []
-    #iterate 100 times
-    for i in range(100):
-        #select initial clusters
-        np_relation = select_initial_clusters(normalize_df)
-        medoids = find_medoid(np_relation, normalize_df)
-        #if there are three mediods
-        if len(medoids) == 3:
-            #calculate variances for each cluster
-            variances = calculate_variance(medoids, np_relation, normalize_df)
-            #sum up the variances for all clusters
-            variance_sum = sum(variances)
-            #if the variance is less than the current best variance
-            if variance_sum < best_variance:
-                #update the best variance
-                best_variance = variance_sum
-                #update the best variances
-                best_variances = variances
-                #update best medoids
-                best_medoids = medoids
-    print("Best Medoids: ", best_medoids)
-    print("Best Variances: ", best_variances)
-    return best_variances
 
-"""""
+def new_cluster(medoids: list, np_relation: dict[list], normalize_jaccard_df: pd.DataFrame):
+    c1 = []
+    c2 = []
+    c3 = []
+    new_df = get_new_df(medoids, normalize_jaccard_df)
+    for x in new_df.columns:
+        # retrieves the column with the name x
+        column = new_df[x]
+        # get the maximum value in the column x
+        max_value = column.max()
+        # If there are duplicates in the column, store the duplicates in a series
+        duplicates = column[column == max_value]
+        if len(duplicates) > 1:  # If there are duplicates
+            # select a random index from the duplciates
+            max_index = np.random.choice(duplicates.index)
+            # assign the max index to a random
+        else:
+            # get the index of the max value
+            max_index = column.idxmax()
+        # assign the column to the cluster with the corresponding index label
+        if max_index == new_df.index[0]:
+            c1.append(x)
+
+        if max_index == new_df.index[1]:
+            c2.append(x)
+
+        if max_index == new_df.index[2]:
+            c3.append(x)
+    # create the dictionary mapping each np to a specific cluster
+    np_relation = {
+        new_df.index[0]: c1, new_df.index[1]: c2, new_df.index[2]: c3}
+    # pprint.pprint(np_relation)
+    return np_relation
+
+
+def get_new_medoids(np_relation: dict[list], normalize_df: pd.DataFrame):
+    medoids = []  # initialize list for the medoids
+    for cluster in np_relation.keys():  # loop through each cluster(initial 3  random nps)/ use .keys() as the keys to the index are the clusters
+        # get nps for the specific cluster, initializes a list
+        nps = np_relation[cluster]
+        distances = []  # list to store sum distances
+        for i in range(len(nps)):  # loop through the nps in the specific cluster
+            np1 = nps[i]  # assign np1 to location i
+            temp_distances = []  # temp storage for distances
+            for j in range(len(nps)):  # loop again for second np
+                np2 = nps[j]  # assign np2 to location j
+                # locate the jaccard value in dataframe and store the index in the temp distance
+                temp_distances.append(normalize_df.loc[np1, np2])
+
+            # sum the distances and store into list as np1 has been compared. now move to np2
+            distances.append(sum(temp_distances))
+        if not distances:  # make sure the distances is not empty
+            continue
+        # assign the first medoid by finding the min in the similarity sum list
+        # finds the data point that has the largest average similarities to all other data points in the cluster.
+        # return index(NP) that contained the minimum sum of distances
+        medoid = nps[distances.index(max(distances))]
+        medoids.append(medoid)  # add to medoid list/ Move to next cluster.
+
+    return medoids
+
+
+def get_new_df(medoids: list, normalize_jaccard_df: pd.DataFrame):
+    nps = normalize_jaccard_df.index.tolist()
+    new_nps = [np for np in nps if np not in medoids]
+    new_df = normalize_jaccard_df.loc[medoids, new_nps]
+    return new_df
+
+
 # Print the data
+""""
 print("-----------------------------------------------------------------------")
 print(data)
 print("DATA for Activity 1")
@@ -532,18 +577,28 @@ store_jaccard_index(nps_arrays)
 print("------------------------------------------------------------")
 print("Difference Matrix")
 store_distance_matrix(nps_arrays)
-print("-----------------------------------------------------------------------_")
 """
+print("-----------------------------------------------------------------------_")
 print("Activity 5: Clustering")
 print("------------------------------------------------------------------------")
 print("Normalized Jaccard Distance Matrix")
 normalized_jaccard_matrix = store_normalize_jaccard_matrix(nps_arrays)
-np_relation = select_initial_clusters(normalized_jaccard_matrix) 
-medoids = find_medoid(np_relation, normalized_jaccard_matrix) 
-initial_variances = calculate_variance(medoids, np_relation, normalized_jaccard_matrix)
-print("initial Medoids:" , medoids)
+np_relation = select_initial_clusters(normalized_jaccard_matrix)
+medoids = find_initial_medoids(np_relation, normalized_jaccard_matrix)
+print("Initial Medoids:", medoids)
+initial_variances = calculate_variance(
+    medoids, np_relation, normalized_jaccard_matrix)
 print("Initial Variances: ", initial_variances)
-find_best_variance(normalized_jaccard_matrix)
+new_np_relation = new_cluster(medoids, np_relation, normalized_jaccard_matrix)
+
+for i in range(250):
+    medoids = get_new_medoids(new_np_relation, normalized_jaccard_matrix)
+    variance = calculate_variance(
+        medoids, new_np_relation, normalized_jaccard_matrix)
+    new_np_relation = new_cluster(
+        medoids, new_np_relation, normalized_jaccard_matrix)
+    print("Medoids:", medoids)
+    print("Variance:", variance)
 quit()
 
 
