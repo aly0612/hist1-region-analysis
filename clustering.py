@@ -12,6 +12,7 @@ original_original_data = pd.read_csv(
 original_data = pd.read_csv('jaccard_matrix.csv')
 normalize_data = pd.read_csv('normalize_jaccard_matrix.csv')
 
+
 def select_initial_clusters(normalize_df: pd.DataFrame):
     # select 3 random samples in the dataframe, if the same samples replace
     normalize_df = normalize_df.sample(n=3, replace=True)
@@ -50,10 +51,10 @@ def select_initial_clusters(normalize_df: pd.DataFrame):
 
 # write the table to a file
     with open('clusters.csv', 'w', newline='') as csvfile:
-      writer = csv.writer(csvfile)
-      for line in table.split('\n'):
-        writer.writerow(line.split('\t')) 
-    
+        writer = csv.writer(csvfile)
+        for line in table.split('\n'):
+            writer.writerow(line.split('\t'))
+
     return np_relation, normalize_df
 
 
@@ -70,7 +71,8 @@ def find_medoid(cluster_df: pd.DataFrame, clusters: dict):
     medoids = []
     for np_key, np_values in clusters.items():
         cluster_np_values = cluster_df[np_values]
-        distance_matrix = squareform(pdist(cluster_np_values, metric='jaccard'))
+        distance_matrix = squareform(
+            pdist(cluster_np_values, metric='jaccard'))
         # calculate the average dissimilarity between each NP and all other NPs in the cluster
         avg_dissimilarity = np.mean(distance_matrix, axis=1)
         # find the index of the NP with the minimal average dissimilarity
@@ -78,15 +80,19 @@ def find_medoid(cluster_df: pd.DataFrame, clusters: dict):
         # add the medoid to the list of medoids
         medoids.append(np_values[medoid_index])
     return medoids
+
+
 medoids = find_medoid(cluster_df, clusters)
 print("1st Medoids", medoids)
 print("*******************")
+
 
 def get_new_df(medoids: list, normalize_data: pd.DataFrame):
     nps = normalize_data.index.tolist()
    # new_nps = [np for np in nps if np not in medoids]
     new_df = normalize_data.loc[medoids, nps]
     return new_df
+
 
 def assign_to_cluster(medoids: list, normalize_data: pd.DataFrame):
     new_df = get_new_df(medoids, normalize_data)
@@ -118,7 +124,10 @@ def assign_to_cluster(medoids: list, normalize_data: pd.DataFrame):
             writer.writerow(line.split('\t'))
     return np_relation
 
-medoids = find_medoid(get_new_df(medoids, normalize_data), assign_to_cluster(medoids, normalize_data))
+
+medoids = find_medoid(get_new_df(medoids, normalize_data),
+                      assign_to_cluster(medoids, normalize_data))
+
 
 def calculate_variance(medoids: list, normalize_data: pd.DataFrame):
     new_df = get_new_df(medoids, normalize_data)
@@ -127,26 +136,23 @@ def calculate_variance(medoids: list, normalize_data: pd.DataFrame):
     return variance
 
 
-
-threshold = 0.005 # set the threshold for change in variance
+threshold = 0.005  # set the threshold for change in variance
 
 prev_variance = 0  # initialize the previous variance
 for i in range(50):
-    medoids = find_medoid(get_new_df(medoids, normalize_data), assign_to_cluster(medoids, normalize_data))
+    medoids = find_medoid(get_new_df(medoids, normalize_data),
+                          assign_to_cluster(medoids, normalize_data))
     variance = calculate_variance(medoids, normalize_data)
     print("Variance", variance)
     print("Medoids", medoids)
     print("*******************")
 
-    if abs(variance - prev_variance) < threshold:  # check if change in variance is less than threshold
+    # check if change in variance is less than threshold
+    if abs(variance - prev_variance) < threshold:
         print("Variance change is less than threshold. Stopping iterations.")
         break
 
     prev_variance = variance  # update previous variance with current variance
-
-
-
-
 
 
 def kmedoids_clustering(normalize_data, k=3, num_repeats=15):
@@ -165,11 +171,11 @@ def kmedoids_clustering(normalize_data, k=3, num_repeats=15):
             else:
                 medoids = new_medoids
                 clusters = assign_to_cluster(medoids, normalize_data)
-            
+
         # calculate the quality metric for this repetition
         variance = calculate_variance(medoids, normalize_data)
         quality_metrics.append(variance)
-        
+
         # check if this set of clusters has the lowest variance so far
         if variance < min_variance and len(medoids) == k:
             min_variance = variance
@@ -179,14 +185,13 @@ def kmedoids_clustering(normalize_data, k=3, num_repeats=15):
     return best_medoids, min_variance, quality_metrics, best_clusters
 
 
-  
-best_medoids, min_variance, quality_metrics, best_clusters = kmedoids_clustering(normalize_data)
+best_medoids, min_variance, quality_metrics, best_clusters = kmedoids_clustering(
+    normalize_data)
 
 print("Best Medoids", best_medoids)
 print("Min Variance", min_variance)
 print("Best Clusters", best_clusters)
 print(original_original_data)
-
 
 
 c1 = []
@@ -204,6 +209,7 @@ for key in best_clusters:
 cluster1_data = original_original_data.loc[:, c1].T
 cluster2_data = original_original_data.loc[:, c2].T
 cluster3_data = original_original_data.loc[:, c3].T
+"""
 # create grid of plots
 fig, axs = plt.subplots(1, 3, figsize=(12, 4))
 
@@ -213,6 +219,8 @@ sns.heatmap(cluster2_data,  ax=axs[1])
 sns.heatmap(cluster3_data,   ax=axs[2])
 
 # set titles for each heatmap
+
+axs[0].set_title('Cluster 1')
 axs[0].set_title('Cluster 1')
 axs[1].set_title('Cluster 2')
 axs[2].set_title('Cluster 3')
@@ -222,3 +230,95 @@ plt.subplots_adjust(wspace=0.3)
 
 # display the plot
 plt.show()
+"""
+feature_df = pd.read_csv('features.csv')
+
+
+def isolate_features(feature_df: pd.DataFrame):
+    isolated_features = feature_df.loc[:, ['Hist1', 'LAD']]
+    return isolated_features
+
+
+isolate_features(feature_df)
+
+
+def isolate_hist1_region(cluster_df: pd.DataFrame):
+    cluster_df = cluster_df.iloc[69716:69797].copy()
+    return cluster_df
+
+print(isolate_hist1_region(cluster1_data.T))
+print(isolate_hist1_region(cluster2_data.T))
+print(isolate_hist1_region(cluster3_data.T))
+print(isolate_features(feature_df))
+
+
+def calculate_np_feature_percentage(cluster_df, feature_df):
+    cluster_df = isolate_hist1_region(cluster_df)
+    cluster_df.index = range(len(cluster_df.index))
+    feature_df = isolate_features(feature_df)
+    np_feature_counts = {}
+    total_windows = len(cluster_df)
+
+    for np in cluster_df.columns:
+        np_feature_counts[np] = {}
+        for feature in feature_df.columns:
+            count = 0
+            for index, row in cluster_df.iterrows():
+                if row[np] == 1 and feature_df.loc[index, feature] == 1:
+                    count += 1
+            
+            np_feature_counts[np][feature] = count / total_windows
+    
+
+    percentages_df = pd.DataFrame(np_feature_counts)
+    print(percentages_df)
+    return percentages_df
+
+cluster1_feature_percent = calculate_np_feature_percentage(cluster1_data.T, feature_df)
+
+
+
+def create_his1_box_plot():
+    cluster1_percentages_df = calculate_np_feature_percentage(cluster1_data.T, feature_df)
+    cluster2_percentages_df = calculate_np_feature_percentage(cluster2_data.T, feature_df)
+    cluster3_percentages_df = calculate_np_feature_percentage(cluster3_data.T, feature_df)
+
+    # combine the percentage data for each cluster into a single dataframe
+    all_cluster_percentages = pd.concat([cluster1_percentages_df.loc['Hist1'], 
+                                         cluster2_percentages_df.loc['Hist1'], 
+                                         cluster3_percentages_df.loc['Hist1']], 
+                                        axis=1)
+    all_cluster_percentages.columns = ['Cluster1', 'Cluster2', 'Cluster3']
+    
+    # create the box plot using catplot
+    sns.set(style='whitegrid')
+    sns.catplot(data=all_cluster_percentages, kind='box')
+    plt.xlabel('Cluster')
+    plt.ylabel('Percentage of windows with Hist1 feature')
+    plt.title('Hist1')
+    plt.show()
+
+def create_LAD_box_plot():
+    cluster1_percentages_df = calculate_np_feature_percentage(cluster1_data.T, feature_df)
+    cluster2_percentages_df = calculate_np_feature_percentage(cluster2_data.T, feature_df)
+    cluster3_percentages_df = calculate_np_feature_percentage(cluster3_data.T, feature_df)
+
+    # combine the percentage data for each cluster into a single dataframe
+    all_cluster_percentages = pd.concat([cluster1_percentages_df.loc['LAD'], 
+                                         cluster2_percentages_df.loc['LAD'], 
+                                         cluster3_percentages_df.loc['LAD']], 
+                                        axis=1)
+    all_cluster_percentages.columns = ['Cluster1', 'Cluster2', 'Cluster3']
+    
+    # create the box plot using catplot
+    sns.set(style='whitegrid')
+    sns.catplot(data=all_cluster_percentages, kind='box')
+    plt.xlabel('Cluster')
+    plt.ylabel('Percentage of windows with LAD feature')
+    plt.title('LAD')
+    plt.show()
+
+
+create_his1_box_plot()
+create_LAD_box_plot()
+
