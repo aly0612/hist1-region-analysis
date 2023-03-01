@@ -12,6 +12,48 @@ original_original_data = pd.read_csv(
 original_data = pd.read_csv('jaccard_matrix.csv')
 normalize_data = pd.read_csv('normalize_jaccard_matrix.csv')
 
+nps = original_original_data.iloc[:, 3:]
+sum_columns = nps.sum()
+sum_rows = nps.sum(axis=1)
+print(nps)
+print(sum_columns)
+
+
+def smallest_num_windows_in_np():
+    return sum_columns.min()
+
+
+def largest_num_windows_in_np():
+    return sum_columns.max()
+
+
+def radial_position():
+    sections = (largest_num_windows_in_np() - smallest_num_windows_in_np()) / 5
+    section_1 = round(sections)
+    section_2 = round(sections * 2)
+    section_3 = round(sections * 3)
+    section_4 = round(sections * 4)
+
+    # initialize an empty dictionary to store the radial positions of NPs
+    radial_positions = {}
+
+    for np_name, value in sum_columns.items():
+        if value <= section_1:
+            radial_positions[np_name] = "StrA"
+        elif value <= section_2 and value > section_1:
+            radial_positions[np_name] = "SomeA"
+        elif value <= section_3 and value > section_2:
+            radial_positions[np_name] = "Neither"
+        elif value <= section_4 and value > section_3:
+            radial_positions[np_name] = "SomeE"
+        elif value > section_4:
+            radial_positions[np_name] = "StrE"
+
+    return radial_positions
+
+
+radial_position_data = radial_position()
+
 
 def select_initial_clusters(normalize_df: pd.DataFrame):
     # select 3 random samples in the dataframe, if the same samples replace
@@ -155,7 +197,7 @@ for i in range(50):
     prev_variance = variance  # update previous variance with current variance
 
 
-def kmedoids_clustering(normalize_data, k=3, num_repeats=15):
+def kmedoids_clustering(normalize_data, k=3, num_repeats=50):
     quality_metrics = []  # list to store the quality metric for each repetition
     best_medoids = None
     min_variance = float('inf')
@@ -246,6 +288,7 @@ def isolate_hist1_region(cluster_df: pd.DataFrame):
     cluster_df = cluster_df.iloc[69716:69797].copy()
     return cluster_df
 
+
 print(isolate_hist1_region(cluster1_data.T))
 print(isolate_hist1_region(cluster2_data.T))
 print(isolate_hist1_region(cluster3_data.T))
@@ -266,30 +309,33 @@ def calculate_np_feature_percentage(cluster_df, feature_df):
             for index, row in cluster_df.iterrows():
                 if row[np] == 1 and feature_df.loc[index, feature] == 1:
                     count += 1
-            
+
             np_feature_counts[np][feature] = count / total_windows
-    
 
     percentages_df = pd.DataFrame(np_feature_counts)
     print(percentages_df)
     return percentages_df
 
-cluster1_feature_percent = calculate_np_feature_percentage(cluster1_data.T, feature_df)
 
+cluster1_feature_percent = calculate_np_feature_percentage(
+    cluster1_data.T, feature_df)
 
 
 def create_his1_box_plot():
-    cluster1_percentages_df = calculate_np_feature_percentage(cluster1_data.T, feature_df)
-    cluster2_percentages_df = calculate_np_feature_percentage(cluster2_data.T, feature_df)
-    cluster3_percentages_df = calculate_np_feature_percentage(cluster3_data.T, feature_df)
+    cluster1_percentages_df = calculate_np_feature_percentage(
+        cluster1_data.T, feature_df)
+    cluster2_percentages_df = calculate_np_feature_percentage(
+        cluster2_data.T, feature_df)
+    cluster3_percentages_df = calculate_np_feature_percentage(
+        cluster3_data.T, feature_df)
 
     # combine the percentage data for each cluster into a single dataframe
-    all_cluster_percentages = pd.concat([cluster1_percentages_df.loc['Hist1'], 
-                                         cluster2_percentages_df.loc['Hist1'], 
-                                         cluster3_percentages_df.loc['Hist1']], 
+    all_cluster_percentages = pd.concat([cluster1_percentages_df.loc['Hist1'],
+                                         cluster2_percentages_df.loc['Hist1'],
+                                         cluster3_percentages_df.loc['Hist1']],
                                         axis=1)
     all_cluster_percentages.columns = ['Cluster1', 'Cluster2', 'Cluster3']
-    
+
     # create the box plot using catplot
     sns.set(style='whitegrid')
     sns.catplot(data=all_cluster_percentages, kind='box')
@@ -298,18 +344,22 @@ def create_his1_box_plot():
     plt.title('Hist1')
     plt.show()
 
+
 def create_LAD_box_plot():
-    cluster1_percentages_df = calculate_np_feature_percentage(cluster1_data.T, feature_df)
-    cluster2_percentages_df = calculate_np_feature_percentage(cluster2_data.T, feature_df)
-    cluster3_percentages_df = calculate_np_feature_percentage(cluster3_data.T, feature_df)
+    cluster1_percentages_df = calculate_np_feature_percentage(
+        cluster1_data.T, feature_df)
+    cluster2_percentages_df = calculate_np_feature_percentage(
+        cluster2_data.T, feature_df)
+    cluster3_percentages_df = calculate_np_feature_percentage(
+        cluster3_data.T, feature_df)
 
     # combine the percentage data for each cluster into a single dataframe
-    all_cluster_percentages = pd.concat([cluster1_percentages_df.loc['LAD'], 
-                                         cluster2_percentages_df.loc['LAD'], 
-                                         cluster3_percentages_df.loc['LAD']], 
+    all_cluster_percentages = pd.concat([cluster1_percentages_df.loc['LAD'],
+                                         cluster2_percentages_df.loc['LAD'],
+                                         cluster3_percentages_df.loc['LAD']],
                                         axis=1)
     all_cluster_percentages.columns = ['Cluster1', 'Cluster2', 'Cluster3']
-    
+
     # create the box plot using catplot
     sns.set(style='whitegrid')
     sns.catplot(data=all_cluster_percentages, kind='box')
@@ -319,6 +369,48 @@ def create_LAD_box_plot():
     plt.show()
 
 
-create_his1_box_plot()
-create_LAD_box_plot()
+# create_his1_box_plot()
+# create_LAD_box_plot()
 
+cluster1_Nps = cluster1_data.T.columns.to_list()
+cluster2_Nps = cluster2_data.T.columns.to_list()
+cluster3_Nps = cluster3_data.T.columns.to_list()
+
+
+def calculate_radial_position_percentages(cluster, radial_positions: dict):
+    # Initialize a dictionary to count the number of NPs that fall into each radial position category
+    radial_position_counts = {"StrA": 0, "SomeA": 0,
+                              "Neither": 0, "SomeE": 0, "StrE": 0}
+
+    # Iterate through the NP names in the cluster and count the number of NPs that fall into each radial position category
+    for np_name in cluster:
+        radial_position = radial_positions.get(np_name)
+        if radial_position is not None:  # Make sure the NP has a radial position assigned
+            radial_position_counts[radial_position] += 1
+
+    # Calculate the percentage of NPs that fall into each radial position category
+    total_nps = sum(radial_position_counts.values())
+    radial_position_percentages = {
+        k: v/total_nps for k, v in radial_position_counts.items()}
+
+    return radial_position_percentages
+
+
+c1_radial_percentages = calculate_radial_position_percentages(
+    cluster1_Nps, radial_position_data)
+c2_radial_percentages = calculate_radial_position_percentages(
+    cluster2_Nps, radial_position_data)
+c3_radial_percentages = calculate_radial_position_percentages(
+    cluster3_Nps, radial_position_data)
+
+
+def generate_bargraph(radial_percentges: dict):
+    # Create a bar graph of the radial position percentages
+    plt.bar(radial_percentges.keys(), radial_percentges.values())
+    plt.ylabel('Percentage of NPs')
+    plt.show()
+
+
+generate_bargraph(c1_radial_percentages)
+generate_bargraph(c2_radial_percentages)
+generate_bargraph(c3_radial_percentages)
