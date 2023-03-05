@@ -5,8 +5,7 @@ import seaborn as sns
 import csv
 from tabulate import tabulate
 from scipy.spatial.distance import pdist, squareform, cdist
-from copy import deepcopy
-
+from math import pi
 original_original_data = pd.read_csv(
     'GSE64881_segmentation_at_30000bp.passqc.multibam.txt', delimiter="\t")
 original_data = pd.read_csv('jaccard_matrix.csv')
@@ -15,8 +14,6 @@ normalize_data = pd.read_csv('normalize_jaccard_matrix.csv')
 nps = original_original_data.iloc[:, 3:]
 sum_columns = nps.sum()
 sum_rows = nps.sum(axis=1)
-print(nps)
-print(sum_columns)
 
 
 def smallest_num_windows_in_np():
@@ -105,10 +102,10 @@ clusters, cluster_df = select_initial_clusters(normalize_data)
 print("Initial Clusters DF")
 print("*******************")
 print(cluster_df)
-print("*******************")
-
 
 # Find the medoid of each cluster
+
+
 def find_medoid(cluster_df: pd.DataFrame, clusters: dict):
     medoids = []
     for np_key, np_values in clusters.items():
@@ -125,8 +122,6 @@ def find_medoid(cluster_df: pd.DataFrame, clusters: dict):
 
 
 medoids = find_medoid(cluster_df, clusters)
-print("1st Medoids", medoids)
-print("*******************")
 
 
 def get_new_df(medoids: list, normalize_data: pd.DataFrame):
@@ -179,19 +174,15 @@ def calculate_variance(medoids: list, normalize_data: pd.DataFrame):
 
 
 threshold = 0.005  # set the threshold for change in variance
-
 prev_variance = 0  # initialize the previous variance
+
 for i in range(50):
     medoids = find_medoid(get_new_df(medoids, normalize_data),
                           assign_to_cluster(medoids, normalize_data))
     variance = calculate_variance(medoids, normalize_data)
-    print("Variance", variance)
-    print("Medoids", medoids)
-    print("*******************")
 
     # check if change in variance is less than threshold
     if abs(variance - prev_variance) < threshold:
-        print("Variance change is less than threshold. Stopping iterations.")
         break
 
     prev_variance = variance  # update previous variance with current variance
@@ -229,12 +220,9 @@ def kmedoids_clustering(normalize_data, k=3, num_repeats=50):
 
 best_medoids, min_variance, quality_metrics, best_clusters = kmedoids_clustering(
     normalize_data)
-
 print("Best Medoids", best_medoids)
 print("Min Variance", min_variance)
-print("Best Clusters", best_clusters)
 print(original_original_data)
-
 
 c1 = []
 c2 = []
@@ -251,6 +239,8 @@ for key in best_clusters:
 cluster1_data = original_original_data.loc[:, c1].T
 cluster2_data = original_original_data.loc[:, c2].T
 cluster3_data = original_original_data.loc[:, c3].T
+
+
 """
 # create grid of plots
 fig, axs = plt.subplots(1, 3, figsize=(12, 4))
@@ -281,7 +271,13 @@ def isolate_features(feature_df: pd.DataFrame):
     return isolated_features
 
 
-isolate_features(feature_df)
+print(isolate_features(feature_df))
+
+
+def isolate_all_features(feature_df: pd.DataFrame):
+    isolated_features = feature_df.loc[:, ['Hist1', 'Vmn', 'LAD', 'RNAPII-S2P', 'RNAPII-S5P', 'RNAPII-S7P',
+                                           'Enhancer', 'H3K9me3', 'H3K20me3', 'h3k27me3', 'H3K36me3', 'NANOG', 'pou5f1', 'sox2', 'CTCF-7BWU']]
+    return isolated_features
 
 
 def isolate_hist1_region(cluster_df: pd.DataFrame):
@@ -292,7 +288,13 @@ def isolate_hist1_region(cluster_df: pd.DataFrame):
 print(isolate_hist1_region(cluster1_data.T))
 print(isolate_hist1_region(cluster2_data.T))
 print(isolate_hist1_region(cluster3_data.T))
-print(isolate_features(feature_df))
+isolate_hist1_region(cluster1_data.T).to_csv('cluster1.csv', index=False)
+isolate_hist1_region(cluster2_data.T).to_csv('cluster2.csv', index=False)
+isolate_hist1_region(cluster3_data.T).to_csv('cluster3.csv', index=False)
+
+print("here")
+print(feature_df)
+print(isolate_all_features(feature_df))
 
 
 def calculate_np_feature_percentage(cluster_df, feature_df):
@@ -307,7 +309,29 @@ def calculate_np_feature_percentage(cluster_df, feature_df):
         for feature in feature_df.columns:
             count = 0
             for index, row in cluster_df.iterrows():
-                if row[np] == 1 and feature_df.loc[index, feature] == 1:
+                if row[np] == 1 and feature_df.loc[index, feature] >= 1:
+                    count += 1
+
+            np_feature_counts[np][feature] = count / total_windows
+
+    percentages_df = pd.DataFrame(np_feature_counts)
+    print(percentages_df)
+    return percentages_df
+
+
+def calculate_np_featrure_percentage__all(cluster_df, feature_df):
+    cluster_df = isolate_hist1_region(cluster_df)
+    cluster_df.index = range(len(cluster_df.index))
+    feature_df = isolate_all_features(feature_df)
+    np_feature_counts = {}
+    total_windows = len(cluster_df)
+
+    for np in cluster_df.columns:
+        np_feature_counts[np] = {}
+        for feature in feature_df.columns:
+            count = 0
+            for index, row in cluster_df.iterrows():
+                if row[np] == 1 and feature_df.loc[index, feature] >= 1:
                     count += 1
 
             np_feature_counts[np][feature] = count / total_windows
@@ -319,6 +343,13 @@ def calculate_np_feature_percentage(cluster_df, feature_df):
 
 cluster1_feature_percent = calculate_np_feature_percentage(
     cluster1_data.T, feature_df)
+
+cluster1_feature_percent_all = calculate_np_featrure_percentage__all(
+    cluster1_data.T, feature_df)
+cluster2_feature_percent_all = calculate_np_featrure_percentage__all(
+    cluster2_data.T, feature_df)
+cluster3_feature_percent_all = calculate_np_featrure_percentage__all(
+    cluster3_data.T, feature_df)
 
 
 def create_his1_box_plot():
@@ -414,3 +445,58 @@ def generate_bargraph(radial_percentges: dict):
 generate_bargraph(c1_radial_percentages)
 generate_bargraph(c2_radial_percentages)
 generate_bargraph(c3_radial_percentages)
+
+
+def calculate_average_percentage(cluster1_feature_percentages: pd.DataFrame):
+    average_percentages = {}
+    for features in cluster1_feature_percentages.index:
+        average_percentages[features] = cluster1_feature_percentages.loc[features].mean(
+        ) * 100
+    average_percentages_df = pd.DataFrame(average_percentages, index=[0])
+    return average_percentages_df
+
+
+calculate_average_percentage(cluster1_feature_percent_all)
+
+cluster1_averaae_percentages = calculate_average_percentage(
+    cluster1_feature_percent_all)
+cluster2_average_percentages = calculate_average_percentage(
+    cluster2_feature_percent_all)
+cluster3_average_percentages = calculate_average_percentage(
+    cluster3_feature_percent_all)
+
+all_cluster_feature_percentages = pd.concat(
+    [cluster1_averaae_percentages, cluster2_average_percentages, cluster3_average_percentages], axis=0)
+all_cluster_feature_percentages.index = ['Cluster1', 'Cluster2', 'Cluster3']
+print(all_cluster_feature_percentages)
+
+
+def create_radar_chart(all_cluster_feature_percentages: pd.DataFrame):
+    # number of variable
+    categories = list(all_cluster_feature_percentages)
+    N = len(categories)
+    fig, ax = plt.subplots(figsize=(8, 8), subplot_kw=dict(polar=True))
+    # loop through the rows of the data frame and plot each one as a separate data point
+    for i, row in all_cluster_feature_percentages.iterrows():
+        values = row.values.flatten().tolist()
+        values += values[:1]
+        angles = [n / float(N) * 2 * pi for n in range(N)]
+        angles += angles[:1]
+        ax.plot(angles, values, linewidth=1,
+                linestyle='solid', label=f'Cluster {i}')
+        ax.fill(angles, values, alpha=0.1)
+
+    plt.xticks(angles[:-1], categories, color='grey', size=8)
+
+    ax.set_rlabel_position(0)
+    plt.yticks([5, 10, 15, 20], ["5", "10", "15", "20"], color="grey", size=7)
+    plt.ylim(0, 20)
+
+    ax.plot(angles, values, linewidth=1, linestyle='solid')
+
+    ax.fill(angles, values, 'b', alpha=0.1)
+
+    plt.show()
+
+
+create_radar_chart(all_cluster_feature_percentages)
