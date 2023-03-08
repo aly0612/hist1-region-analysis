@@ -220,14 +220,18 @@ def kmedoids_clustering(normalize_data, k=3, num_repeats=50):
 
 best_medoids, min_variance, quality_metrics, best_clusters = kmedoids_clustering(
     normalize_data)
+print("Feature selection - Activity1")
+print("*******************")
+print("Optimizing Clusters")
+print("*******************")
 print("Best Medoids", best_medoids)
 print("Min Variance", min_variance)
-print(original_original_data)
 
 c1 = []
 c2 = []
 c3 = []
-
+#creating a list of the best clusters, this will allow us to create a new dataframe with the best clusters
+#the best clusters are the ones that have the best medoids
 for key in best_clusters:
     if key == best_medoids[0]:
         c1 = best_clusters[key]
@@ -235,13 +239,15 @@ for key in best_clusters:
         c2 = best_clusters[key]
     if key == best_medoids[2]:
         c3 = best_clusters[key]
-
+#creating dataframes for each cluster based on the best medoids
+#A 1 will indicate that the NP is detected in the window within that specific cluster
 cluster1_data = original_original_data.loc[:, c1].T
 cluster2_data = original_original_data.loc[:, c2].T
 cluster3_data = original_original_data.loc[:, c3].T
 
+print("*******************")
+print("Creating Heatmap")
 
-"""
 # create grid of plots
 fig, axs = plt.subplots(1, 3, figsize=(12, 4))
 
@@ -253,24 +259,30 @@ sns.heatmap(cluster3_data,   ax=axs[2])
 # set titles for each heatmap
 
 axs[0].set_title('Cluster 1')
-axs[0].set_title('Cluster 1')
 axs[1].set_title('Cluster 2')
 axs[2].set_title('Cluster 3')
 
 # adjust spacing between plots
-plt.subplots_adjust(wspace=0.3)
+# this will allows all plots to be merged into one image
+plt.subplots_adjust(wspace=0.3) 
 
 # display the plot
 plt.show()
-"""
-feature_df = pd.read_csv('features.csv')
 
+print("*******************")
+print("Feature Selection - Activity 2")
+
+feature_df = pd.read_csv('features.csv')
+print("*******************")
+print("All Features DataFrame")
+print(feature_df)
+print("*******************")
 
 def isolate_features(feature_df: pd.DataFrame):
     isolated_features = feature_df.loc[:, ['Hist1', 'LAD']]
     return isolated_features
 
-
+print("Isolated Features DataFrame - Hist1 and LAD")
 print(isolate_features(feature_df))
 
 
@@ -283,17 +295,23 @@ def isolate_all_features(feature_df: pd.DataFrame):
 def isolate_hist1_region(cluster_df: pd.DataFrame):
     cluster_df = cluster_df.iloc[69716:69797].copy()
     return cluster_df
-
-
+print("*******************")
+print("Isolated Hist1 Region DataFrame - Cluster 1")
 print(isolate_hist1_region(cluster1_data.T))
+print("*******************")
+print("Isolated Hist1 Region DataFrame - Cluster 2")
 print(isolate_hist1_region(cluster2_data.T))
+print("*******************")
+print("Isolated Hist1 Region DataFrame - Cluster 3")
 print(isolate_hist1_region(cluster3_data.T))
+print("*******************")
+
+
 isolate_hist1_region(cluster1_data.T).to_csv('cluster1.csv', index=False)
 isolate_hist1_region(cluster2_data.T).to_csv('cluster2.csv', index=False)
 isolate_hist1_region(cluster3_data.T).to_csv('cluster3.csv', index=False)
 
-print("here")
-print(feature_df)
+
 print(isolate_all_features(feature_df))
 
 
@@ -315,11 +333,10 @@ def calculate_np_feature_percentage(cluster_df, feature_df):
             np_feature_counts[np][feature] = count / total_windows
 
     percentages_df = pd.DataFrame(np_feature_counts)
-    print(percentages_df)
     return percentages_df
 
 
-def calculate_np_featrure_percentage__all(cluster_df, feature_df):
+def calculate_np_feature_percentage__all(cluster_df, feature_df):
     cluster_df = isolate_hist1_region(cluster_df)
     cluster_df.index = range(len(cluster_df.index))
     feature_df = isolate_all_features(feature_df)
@@ -337,18 +354,17 @@ def calculate_np_featrure_percentage__all(cluster_df, feature_df):
             np_feature_counts[np][feature] = count / total_windows
 
     percentages_df = pd.DataFrame(np_feature_counts)
-    print(percentages_df)
     return percentages_df
 
 
 cluster1_feature_percent = calculate_np_feature_percentage(
     cluster1_data.T, feature_df)
 
-cluster1_feature_percent_all = calculate_np_featrure_percentage__all(
+cluster1_feature_percent_all = calculate_np_feature_percentage__all(
     cluster1_data.T, feature_df)
-cluster2_feature_percent_all = calculate_np_featrure_percentage__all(
+cluster2_feature_percent_all = calculate_np_feature_percentage__all(
     cluster2_data.T, feature_df)
-cluster3_feature_percent_all = calculate_np_featrure_percentage__all(
+cluster3_feature_percent_all = calculate_np_feature_percentage__all(
     cluster3_data.T, feature_df)
 
 
@@ -399,9 +415,11 @@ def create_LAD_box_plot():
     plt.title('LAD')
     plt.show()
 
-
-# create_his1_box_plot()
-# create_LAD_box_plot()
+print("*******************")
+print("Creating box plots for Hist1 and LAD features")
+create_his1_box_plot()
+create_LAD_box_plot()
+print("*******************")
 
 cluster1_Nps = cluster1_data.T.columns.to_list()
 cluster2_Nps = cluster2_data.T.columns.to_list()
@@ -441,7 +459,9 @@ def generate_bargraph(radial_percentges: dict):
     plt.ylabel('Percentage of NPs')
     plt.show()
 
-
+print("*******************")
+print("Feature Selection - Activity 3")
+print("Creating bar graphs for radial position percentages")
 generate_bargraph(c1_radial_percentages)
 generate_bargraph(c2_radial_percentages)
 generate_bargraph(c3_radial_percentages)
@@ -455,10 +475,7 @@ def calculate_average_percentage(cluster1_feature_percentages: pd.DataFrame):
     average_percentages_df = pd.DataFrame(average_percentages, index=[0])
     return average_percentages_df
 
-
-calculate_average_percentage(cluster1_feature_percent_all)
-
-cluster1_averaae_percentages = calculate_average_percentage(
+cluster1_average_percentages = calculate_average_percentage(
     cluster1_feature_percent_all)
 cluster2_average_percentages = calculate_average_percentage(
     cluster2_feature_percent_all)
@@ -466,8 +483,12 @@ cluster3_average_percentages = calculate_average_percentage(
     cluster3_feature_percent_all)
 
 all_cluster_feature_percentages = pd.concat(
-    [cluster1_averaae_percentages, cluster2_average_percentages, cluster3_average_percentages], axis=0)
+    [cluster1_average_percentages, cluster2_average_percentages, cluster3_average_percentages], axis=0)
 all_cluster_feature_percentages.index = ['Cluster1', 'Cluster2', 'Cluster3']
+
+print("*******************")
+print("Feature Selection - Activity 4")
+print("Average percentage of windows with each feature for each cluster")
 print(all_cluster_feature_percentages)
 
 
@@ -498,5 +519,6 @@ def create_radar_chart(all_cluster_feature_percentages: pd.DataFrame):
 
     plt.show()
 
-
+print("*******************")
+print("Radar chart of average percentage of windows with each feature for each cluster")
 create_radar_chart(all_cluster_feature_percentages)
